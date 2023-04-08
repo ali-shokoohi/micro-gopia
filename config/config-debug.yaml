@@ -1,0 +1,29 @@
+##########################################################################
+#                                                                        #
+#                          Service Identity Part                         #
+#               For Further information, please check README             #
+#                                                                        #
+##########################################################################
+
+service:
+  http:
+    host: "0.0.0.0"
+    port: "8080"
+    requestTimeout: 32
+
+##########################################################################
+#                                                                        #
+#                         Server Config Part                             #
+#       Please set the server parameters based on your own settings      #
+#                                                                        #
+##########################################################################
+
+
+postgres:
+  username: ""
+  password: ""
+  host: ""
+  port: ""
+  db: ""
+  sslmode: "disable"
+  timezone: "UTC"
