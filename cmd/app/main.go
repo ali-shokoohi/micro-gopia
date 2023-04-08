@@ -1,7 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"github.com/ali-shokoohi/micro-gopia/internal/api/routes"
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
-	fmt.Println("Hello, World!")
+	r := gin.Default()
+	routes.Routes(r)
+	r.Run(":8080")
 }
