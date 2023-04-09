@@ -9,20 +9,22 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	dbhost     = config.Confs.Postgres.Host
-	dbport     = config.Confs.Postgres.Port
-	dbuser     = config.Confs.Postgres.Username
-	dbpassword = config.Confs.Postgres.Password
-	dbname     = config.Confs.Postgres.DB
-	sslmode    = config.Confs.Postgres.SslMode
-)
-
 // Database type
 type Database struct{}
 
+var DB *Database = &Database{}
+
 // GetDatabase () *gorm.DB {...} Return a valid database client
 func (database *Database) GetDatabase() *gorm.DB {
+	var (
+		dbhost     = config.Confs.Postgres.Host
+		dbport     = config.Confs.Postgres.Port
+		dbuser     = config.Confs.Postgres.Username
+		dbpassword = config.Confs.Postgres.Password
+		dbname     = config.Confs.Postgres.DB
+		sslmode    = config.Confs.Postgres.SslMode
+	)
+
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=%s TimeZone=Asia/Tehran",
 		dbhost, dbport, dbuser, dbpassword, dbname, sslmode)

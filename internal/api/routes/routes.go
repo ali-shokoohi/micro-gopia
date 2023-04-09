@@ -11,6 +11,10 @@ func Routes(r *gin.Engine) {
 			{
 				HomeRoutes(v1)
 			}
+			users := v1.Group("/users")
+			{
+				UserRoutes(users)
+			}
 		}
 	}
 }
