@@ -1,0 +1,53 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the ones you don't use)
+vendor/
+Godeps/
+glide/
+
+# Generated files (remove the ones you don't use)
+*.pb.go
+*.pb.gw.go
+*.swagger.json
+*.graphql.go
+
+# Logs and other runtime data
+*.log
+*.log.*
+*.stackdump
+*.pid
+*.seed
+
+# Temporary files
+tmp/
+temp/
+*.bak
+*.swp
+
+# Visual Studio Code settings
+.vscode/
+
+# IDE files
+.idea/
+*.iml
+
+# Configuration files (remove the ones you don't use)
+/config/config.yaml
+/config/config-debug.yaml
+
+# Ignore build artifacts and binaries
+/bin/
+/pkg/
+/lib/
+
