@@ -1,145 +1,71 @@
-# Go Rest API
+# Micro-Gopia Golang API
 
-A simple rest API with Go (Golang), mux, Gorm, jwt-go, Postgresql and etc... 
+This is a Golang API project that uses the Gin framework to handle HTTP requests and responses. The project reads a configuration file and uses it to set various settings. The configurations are loaded using the Viper library. If the project is run with the command "migrate", it executes a database migration.
 
-## Configure
+## Installation
 
-### Configure your Go:
+To use this project, you'll need Golang installed on your computer. Follow these steps:
 
-If you didn't set your $GOPATH address It's okay.
-Let's do this!
-First, create a directory in your home.
-Like this:
+1. Clone the repository from GitHub: `git clone https://github.com/ali-shokoohi/micro-gopia.git`
+2. Navigate to the cloned repository: `cd micro-gopia`
+3. Install the dependencies: `go get ./...`
 
-```bash
-mkdir -p $HOME/go/
+## Configuration
+
+The configuration settings for this project are stored in a YAML file located at `config/config-debug.yaml`. If the environment variable `GIN_MODE` is set to "release", it loads the configuration file at `config/config.yaml` and sets the debug flag to false. Below is a sample configuration file:
+
+```yaml
+service:
+
+  http:
+
+    host: "localhost"
+
+    port: "8080"
+
+  db:
+
+    host: "localhost"
+
+    port: "5432"
+
+    dbname: "micro-gopia"
+
+    user: "user"
+
+    password: "password"
 ```
 
-Then we must set this directory's address into $GOPATH.
-All you have to do is just it:
+Make sure to replace the values with your own settings.
 
-```bash
-export GOPATH=$HOME/go
-```
+## Usage
 
-Congratulations!!! You now configure your Go language.
-Let's go next together...
+To start the server, run the following command:
 
-### Configure the app:
+`go run cmd/app/main.go`
 
-Okay. Let me explain.
-We have a file named .env-simple
-Can you see that?
-Great.
-Let's look inside this
-As you can see, we have some variables. Right?
-Excellent! We call those variables the environments;
-That can define in the whole system.
-You must change those values as your values.
-Like dbhost must be your Postgresql host address,
-Or PORT must be a port that you like our app launch on this.
-After changes my dear, It's time to rename this .env-simple file to just *.env*.  Now our app can execute those environments.
-Well done!!
-Let's run our app...
 
-## Run
+You can access the API at `http://localhost:8080/api/v1`.
 
-### Run as docker way:
+## API Routes
 
-If you have docker on your machine, So you are a legend!
-After configuring the app, For running it with docker we must enter a command:
+The following routes are available for this API:
 
-```bash
-docker-compose up --build -d
-```
+- `/api/v1`: The API's home page.
+	- `/`: The home page's route.
+	- `/users`: Routes for interacting with users.
 
-After a while, you can see you did it!
-You can open your browser as localhost:*PORT*
-The PORT is that value you defined in the *.env* file,
-Or 8090 as default.
+These routes are defined in the `internal/api/routes/routes.go` file. The routes are created by nesting groups of routes using the Gin framework's `Group` method.
 
-### Run as classic way:
+## Database Migrations
 
-Oh, I see! We both like the classic way. Oh, wait! I don't mean that!
-Never mind! Running our app is a better choice!
-At first, We must install dependencies and build the app then we can run this.
+To run a database migration, use the following command:
 
-#### Install and build:
+`go run cmd/app/main.go migrate`
 
-To install dependencies and build our app as a single command we can enter this command:
 
-```bash
-go install
-```
+This will execute the database migration code defined in the `pkg/migrations` package.
 
-If You have some issues with installing dependencies, Maybe this command can help you:
+## Contributing
 
-```bash
-go env -w GO111MODULE=auto
-```
-
-Very well! After that, we now have dependencies and a build file that you can't see here. Don't worry!
-Our app has been compiled at the bin/ directory in your *$GOPATH* directory.
-The exact address of our binary file is:
-*$GOPATH/bin/go-rest-api*
-
-#### Run the compiled file:
-
-Well, After install and build our app we have a binary file,
-To execute this file we only have to enter the address of the file in command line, Like the:
-
-```bash
-$GOPATH/bin/go-rest-api
-```
-
-And there We go! Our app is now working very well!
-
-#### Systemd
-You can manage the app with systemd.
-Oh fellow, Do We have a goapi.service file?
-That's good!
-Its contents are below:
-```
-[Unit]
-Description=goapi
-
-[Service]
-Type=simple
-Restart=always
-RestartSec=5s
-User=USER
-WorkingDirectory=/home/USER/go/bin
-ExecStart=/home/USER/go/bin/go-rest-api
-# sudo mkdir -p /var/log/goapi
-StandardOutput=/var/log/goapi/good.log
-StandardError=/var/log/goapi/bad.log
-
-[Install]
-WantedBy=multi-user.target
-```
-So You must change the USER value to your username.
-After that, we must copy this file to systemd configures directory that systemd can run this.
-Let's copy:
-```
-sudo cp goapi.service /etc/systemd/system/
-```
-Now we can manage the app!
-Commands that you need:
-For start:
-```
-sudo systemctl start goapi.service
-```
-For stop:
-```
-sudo systemctl stop goapi.service
-```
-For restart:
-```
-sudo systemctl restart goapi.service
-```
-For auto-start:
-```
-sudo systemctl enable --now goapi.service
-```
-That's it. We are done! We now have a rest API with Go!
-I would be honored if you contribute to this project.
+If you wish to contribute to this project, feel free to submit a pull request or open an issue.
