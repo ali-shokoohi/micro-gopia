@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -9,16 +8,18 @@ import (
 	"github.com/ali-shokoohi/micro-gopia/internal/datastore"
 	"github.com/ali-shokoohi/micro-gopia/internal/domain/dto"
 	"github.com/ali-shokoohi/micro-gopia/internal/domain/entities"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 // UserRepository defines five methods for creating, reading, updating, and deleting user data from the database
 type UserRepository interface {
-	CreateUser(ctx context.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, error)
-	GetUsers(ctx context.Context, page, limits uint) ([]*entities.UserEntity, error)
-	GetUserByID(ctx context.Context, userID uint) (*entities.UserEntity, error)
-	UpdateUserByID(ctx context.Context, userID uint, userUpdate *dto.UserUpdateDto, userEntity *entities.UserEntity) (*entities.UserEntity, error)
-	DeleteUserByID(ctx context.Context, userID uint) error
+	CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, error)
+	GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error)
+	GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error)
+	GetUserByEmail(ctx *gin.Context, email string) (*entities.UserEntity, error)
+	UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto, userEntity *entities.UserEntity) (*entities.UserEntity, error)
+	DeleteUserByID(ctx *gin.Context, userID uint) error
 }
 
 // userRepository implements the interface by defining methods that interact with the database using gorm.
@@ -34,7 +35,7 @@ func NewUserRepository(db *datastore.Database) UserRepository {
 
 // CreateUser validates user data such as email and password using regular expressions, generates a hashed password,
 // And then creates and inserts a new user into the database using gorm.
-func (r *userRepository) CreateUser(ctx context.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, error) {
+func (r *userRepository) CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, error) {
 	user := &entities.UserEntity{
 		Name:     userCreate.Name,
 		Age:      userCreate.Age,
@@ -53,7 +54,7 @@ func (r *userRepository) CreateUser(ctx context.Context, userCreate *dto.UserCre
 }
 
 // GetUsers returns a list of users from the database based on the specified page and limits.
-func (r *userRepository) GetUsers(ctx context.Context, page, limits uint) ([]*entities.UserEntity, error) {
+func (r *userRepository) GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error) {
 	users := []*entities.UserEntity{}
 
 	// Query the users from the database
@@ -68,7 +69,7 @@ func (r *userRepository) GetUsers(ctx context.Context, page, limits uint) ([]*en
 }
 
 // GetUserByID returns a user from the database based on the specified userID.
-func (r *userRepository) GetUserByID(ctx context.Context, userID uint) (*entities.UserEntity, error) {
+func (r *userRepository) GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error) {
 	user := &entities.UserEntity{}
 
 	// Query the user by ID from the database
@@ -83,9 +84,27 @@ func (r *userRepository) GetUserByID(ctx context.Context, userID uint) (*entitie
 	return user, nil
 }
 
+// GetUserByEmail returns a user from the database based on the specified email.
+func (r *userRepository) GetUserByEmail(ctx *gin.Context, email string) (*entities.UserEntity, error) {
+	user := &entities.UserEntity{
+		Email: email,
+	}
+
+	// Query the user by Email from the database
+	if err := r.gormDB.Where(user).Find(user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("User not found with Email: %s", email)
+		}
+		log.Printf("We can't get User with Email: %s, Error: %s", email, err.Error())
+		return nil, errors.New("Internal server error at getting user with Email")
+	}
+
+	return user, nil
+}
+
 // UpdateUserByID updates a user in the database based on the specified userID and userUpdate data,
 // Which may include a new email, password, age or name.
-func (r *userRepository) UpdateUserByID(ctx context.Context, userID uint, userUpdate *dto.UserUpdateDto, userEntity *entities.UserEntity) (*entities.UserEntity, error) {
+func (r *userRepository) UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto, userEntity *entities.UserEntity) (*entities.UserEntity, error) {
 
 	// Update the user's properties
 	if userUpdate.Name != "" {
@@ -110,7 +129,7 @@ func (r *userRepository) UpdateUserByID(ctx context.Context, userID uint, userUp
 }
 
 // DeleteUserByID deletes a user from the database based on the specified userID.
-func (r *userRepository) DeleteUserByID(ctx context.Context, userID uint) error {
+func (r *userRepository) DeleteUserByID(ctx *gin.Context, userID uint) error {
 	user := &entities.UserEntity{}
 
 	// Query the user by ID from the database

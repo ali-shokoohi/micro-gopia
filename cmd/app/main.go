@@ -8,7 +8,9 @@ import (
 	"github.com/ali-shokoohi/micro-gopia/config"
 	"github.com/ali-shokoohi/micro-gopia/internal/api/routes"
 	"github.com/ali-shokoohi/micro-gopia/pkg/migrations"
+	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 func main() {
@@ -17,6 +19,15 @@ func main() {
 		fmt.Printf("We have an error in loading config: %s", err.Error())
 		return
 	}
+	// Watch config file if it change
+	viper.WatchConfig()
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		log.Println("Config file changed:", e.Name)
+		if err := config.Confs.Load(); err != nil {
+			fmt.Printf("We have an error in loading config: %s", err.Error())
+			return
+		}
+	})
 
 	log.Printf("Confs is: %v", config.Confs)
 

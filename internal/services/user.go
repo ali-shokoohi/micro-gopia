@@ -1,24 +1,28 @@
 package services
 
 import (
-	"context"
 	"errors"
 	"log"
 	"regexp"
+	"time"
 
+	"github.com/ali-shokoohi/micro-gopia/config"
 	"github.com/ali-shokoohi/micro-gopia/internal/domain/dto"
 	"github.com/ali-shokoohi/micro-gopia/internal/domain/entities"
 	"github.com/ali-shokoohi/micro-gopia/internal/domain/repositories"
 	"github.com/ali-shokoohi/micro-gopia/scripts"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService interface {
-	CreateUser(ctx context.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, []error)
-	GetUsers(ctx context.Context, page, limits uint) ([]*entities.UserEntity, error)
-	GetUserByID(ctx context.Context, userID uint) (*entities.UserEntity, error)
-	UpdateUserByID(ctx context.Context, userID uint, userUpdate *dto.UserUpdateDto) (*entities.UserEntity, []error)
-	DeleteUserByID(ctx context.Context, userID uint) error
+	CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, []error)
+	GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error)
+	GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error)
+	UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto) (*entities.UserEntity, []error)
+	DeleteUserByID(ctx *gin.Context, userID uint) error
+	Login(ctx *gin.Context, userLogin *dto.UserLoginDto) (string, error)
 }
 
 // UserService represents the service that interacts with the user_repository.
@@ -34,7 +38,7 @@ func NewUserService(userRepository repositories.UserRepository) UserService {
 }
 
 // CreateUser creates a new user if the provided user is valid, and returns an error otherwise.
-func (userService *userService) CreateUser(ctx context.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, []error) {
+func (userService *userService) CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, []error) {
 	var errs []error
 	if userCreate == nil {
 		return nil, append(errs, errors.New("User cannot be nil"))
@@ -61,8 +65,8 @@ func (userService *userService) CreateUser(ctx context.Context, userCreate *dto.
 		errs = append(errs, errors.New("invalid email address!"))
 	}
 
-	// verify the password
-	if !scripts.VerifyPassword(userCreate.Password) {
+	// check the password
+	if !scripts.CheckPassword(userCreate.Password) {
 		errs = append(errs, errors.New("invalid password!"))
 	}
 	if len(errs) > 0 {
@@ -80,7 +84,7 @@ func (userService *userService) CreateUser(ctx context.Context, userCreate *dto.
 }
 
 // GetUsers returns a list of users from the database based on the specified page and limits.
-func (userService *userService) GetUsers(ctx context.Context, page, limits uint) ([]*entities.UserEntity, error) {
+func (userService *userService) GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error) {
 	if page < 0 {
 		return nil, errors.New("Page shouldn't be negative!")
 	}
@@ -91,7 +95,7 @@ func (userService *userService) GetUsers(ctx context.Context, page, limits uint)
 }
 
 // GetUserById returns a user given an id, and an error if the id is not valid.
-func (userService *userService) GetUserByID(ctx context.Context, userID uint) (*entities.UserEntity, error) {
+func (userService *userService) GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error) {
 	if userID <= 0 {
 		return nil, errors.New("Invalid user id")
 	}
@@ -99,7 +103,15 @@ func (userService *userService) GetUserByID(ctx context.Context, userID uint) (*
 }
 
 // UpdateUser updates an existing user if the provided user is valid, and returns an error otherwise.
-func (userService *userService) UpdateUserByID(ctx context.Context, userID uint, userUpdate *dto.UserUpdateDto) (*entities.UserEntity, []error) {
+func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto) (*entities.UserEntity, []error) {
+	claim, err := scripts.CurrentTokenClaim(ctx)
+	if err != nil {
+		log.Printf("Can't get sender ID from the request's token: %s", err.Error())
+		return nil, []error{errors.New("Can't get sender ID from the request's token")}
+	}
+	if claim.UserID != userID {
+		return nil, []error{errors.New("Permission denied")}
+	}
 	if userUpdate.Age < 0 {
 		return nil, []error{errors.New("User age cannot be negative")}
 	}
@@ -124,8 +136,8 @@ func (userService *userService) UpdateUserByID(ctx context.Context, userID uint,
 	}
 
 	if userUpdate.Password != "" {
-		// verify the password
-		if !scripts.VerifyPassword(userUpdate.Password) {
+		// check the password
+		if !scripts.CheckPassword(userUpdate.Password) {
 			errs = append(errs, errors.New("invalid password!"))
 		}
 		if len(errs) > 0 {
@@ -148,9 +160,39 @@ func (userService *userService) UpdateUserByID(ctx context.Context, userID uint,
 }
 
 // DeleteUser deletes an existing user given an id, and returns an error if the id is not valid.
-func (userService *userService) DeleteUserByID(ctx context.Context, userID uint) error {
+func (userService *userService) DeleteUserByID(ctx *gin.Context, userID uint) error {
 	if userID <= 0 {
 		return errors.New("Invalid user id")
 	}
+	claim, err := scripts.CurrentTokenClaim(ctx)
+	if err != nil {
+		log.Printf("Can't get sender ID from the request's token: %s", err.Error())
+		return errors.New("Can't get sender ID from the request's token")
+	}
+	if claim.UserID != userID {
+		return errors.New("Permission denied")
+	}
 	return userService.userRepository.DeleteUserByID(ctx, userID)
+}
+
+// Login verifies logins and return a token string
+func (userService *userService) Login(ctx *gin.Context, userLogin *dto.UserLoginDto) (string, error) {
+	user, err := userService.userRepository.GetUserByEmail(ctx, userLogin.Email)
+	if err != nil {
+		log.Printf("An Error while getting a user with email: %s", err.Error())
+		return "", err
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(userLogin.Password)); err != nil {
+		return "", errors.New("Invalid password!")
+	}
+	// Generate the token
+	tk := &dto.Claims{UserID: user.ID}
+	tk.ExpiresAt = time.Now().Unix() + int64(config.Confs.Service.Token.Expiration)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tk)
+	tokenString, err := token.SignedString([]byte(config.Confs.Service.Token.Password))
+	if err != nil {
+		log.Printf("An Error while Generating a user's token string: %s", err.Error())
+		return "", err
+	}
+	return tokenString, nil
 }

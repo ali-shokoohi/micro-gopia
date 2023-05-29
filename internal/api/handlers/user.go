@@ -17,6 +17,7 @@ type UserHandler interface {
 	GetUserByID(c *gin.Context)
 	UpdateUserByID(c *gin.Context)
 	DeleteUserByID(c *gin.Context)
+	Login(c *gin.Context)
 }
 
 // UserService represents the service that interacts with the user_repository.
@@ -24,8 +25,8 @@ type userHandler struct {
 	userService services.UserService
 }
 
-// NewUserService returns a new instance of UserService.
-func NewUserService(userService services.UserService) UserHandler {
+// NewUserHandler returns a new instance of userHandler.
+func NewUserHandler(userService services.UserService) UserHandler {
 	return &userHandler{
 		userService: userService,
 	}
@@ -109,7 +110,7 @@ func (uh *userHandler) GetUsers(c *gin.Context) {
 	if userViewDtos == nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "ok",
-			"users":  []dto.UserViewDto{},
+			"users":  []*dto.UserViewDto{},
 		})
 		return
 	}
@@ -239,5 +240,28 @@ func (uh *userHandler) DeleteUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "ok",
 		"message": "User deleted successfully",
+	})
+}
+
+func (uh *userHandler) Login(c *gin.Context) {
+	var userLoginDto dto.UserLoginDto
+	if err := c.BindJSON(&userLoginDto); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status": "bad",
+			"error":  "Can't bind the request body. Check it!",
+		})
+		return
+	}
+	token, err := uh.userService.Login(c, &userLoginDto)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status": "bad",
+			"error":  "Can't verify your login!",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"token":  token,
 	})
 }

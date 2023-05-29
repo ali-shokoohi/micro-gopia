@@ -27,6 +27,10 @@ type Service struct {
 		Port           string `yaml:"http.port"`
 		RequestTimeout string `yaml:"http.requestTimeout"`
 	}
+	Token struct {
+		Password   string `yaml:"token.password"`
+		Expiration uint   `yaml:"token.expiration"`
+	}
 }
 
 type Config struct {
