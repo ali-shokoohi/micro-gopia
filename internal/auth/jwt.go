@@ -27,9 +27,8 @@ func (a *auth) JwtAuthMiddleware() gin.HandlerFunc {
 		err := scripts.ValidateToken(c)
 
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"Unauthorized": "Authentication required"})
 			log.Printf("An error while verifying token in middleware: %s", err.Error())
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"Unauthorized": "Authentication required"})
 			return
 		}
 		c.Next()

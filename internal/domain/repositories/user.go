@@ -47,7 +47,7 @@ func (r *userRepository) CreateUser(ctx *gin.Context, userCreate *dto.UserCreate
 	if err := r.gormDB.Create(user).Error; err != nil {
 		log.Printf("We can't insert new user into database: %s", err.Error())
 
-		return nil, errors.New("Internal error at inserting new user into database")
+		return nil, dto.InternalServerError{Message: "Internal error at inserting new user into database"}
 	}
 
 	return user, nil
@@ -62,7 +62,7 @@ func (r *userRepository) GetUsers(ctx *gin.Context, page, limits uint) ([]*entit
 	if err := r.gormDB.Limit(int(limits)).Offset(int(offset)).Find(&users).Error; err != nil {
 
 		log.Printf("We can't get Users Error: %s", err.Error())
-		return nil, errors.New("Internal server error at getting users")
+		return nil, dto.InternalServerError{Message: "Internal server error at getting users"}
 	}
 
 	return users, nil
@@ -75,10 +75,10 @@ func (r *userRepository) GetUserByID(ctx *gin.Context, userID uint) (*entities.U
 	// Query the user by ID from the database
 	if err := r.gormDB.First(user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("User not found with ID: %d", userID)
+			return nil, dto.BadRequestError{Message: fmt.Sprintf("User not found with ID: %d", userID)}
 		}
 		log.Printf("We can't get User with ID: %d, Error: %s", userID, err.Error())
-		return nil, errors.New("Internal server error at getting user with ID")
+		return nil, dto.InternalServerError{Message: "Internal server error at getting user with ID"}
 	}
 
 	return user, nil
@@ -93,10 +93,10 @@ func (r *userRepository) GetUserByEmail(ctx *gin.Context, email string) (*entiti
 	// Query the user by Email from the database
 	if err := r.gormDB.Where(user).Find(user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("User not found with Email: %s", email)
+			return nil, dto.BadRequestError{Message: fmt.Sprintf("User not found with Email: %s", email)}
 		}
 		log.Printf("We can't get User with Email: %s, Error: %s", email, err.Error())
-		return nil, errors.New("Internal server error at getting user with Email")
+		return nil, dto.InternalServerError{Message: "Internal server error at getting user with Email"}
 	}
 
 	return user, nil
@@ -122,7 +122,8 @@ func (r *userRepository) UpdateUserByID(ctx *gin.Context, userID uint, userUpdat
 
 	// Save the updated user to the database
 	if err := r.gormDB.Save(userEntity).Error; err != nil {
-		return nil, errors.New("Internal error at saving updated user into database")
+		log.Printf("Internal error at saving updated user into database. UserID: %d, Error: %s", userID, err.Error())
+		return nil, dto.InternalServerError{Message: "Internal error at saving updated user into database"}
 	}
 
 	return userEntity, nil
@@ -133,13 +134,14 @@ func (r *userRepository) DeleteUserByID(ctx *gin.Context, userID uint) error {
 	user := &entities.UserEntity{}
 
 	// Query the user by ID from the database
-	if err := r.gormDB.First(user, userID).Error; err != nil {
+	if _, err := r.GetUserByID(ctx, userID); err != nil {
 		return err
 	}
 
 	// Delete the user from the database
 	if err := r.gormDB.Delete(user).Error; err != nil {
-		return err
+		log.Printf("Internal error at deleting a user from database. UserID: %d, Error: %s", userID, err.Error())
+		return dto.InternalServerError{Message: "Internal error at deleting a user from database"}
 	}
 
 	return nil

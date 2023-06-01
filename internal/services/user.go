@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"log"
 	"regexp"
 	"time"
@@ -41,16 +40,16 @@ func NewUserService(userRepository repositories.UserRepository) UserService {
 func (userService *userService) CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, []error) {
 	var errs []error
 	if userCreate == nil {
-		return nil, append(errs, errors.New("User cannot be nil"))
+		return nil, append(errs, dto.BadRequestError{Message: "User cannot be null"})
 	}
 	if userCreate.Name == "" {
-		return nil, append(errs, errors.New("User must have a name"))
+		errs = append(errs, dto.BadRequestError{Message: "User must have a name"})
 	}
 	if userCreate.Email == "" {
-		return nil, append(errs, errors.New("User must have an email"))
+		errs = append(errs, dto.BadRequestError{Message: "User must have an email"})
 	}
 	if userCreate.Age < 0 {
-		return nil, append(errs, errors.New("User age cannot be negative"))
+		errs = append(errs, dto.BadRequestError{Message: "User age cannot be negative"})
 	}
 	// Define a regular expression pattern for matching email addresses
 	emailPattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
@@ -58,16 +57,16 @@ func (userService *userService) CreateUser(ctx *gin.Context, userCreate *dto.Use
 	regex, err := regexp.Compile(emailPattern)
 	if err != nil {
 		log.Printf("An error while compiling email regex pattern: %s", err.Error())
-		errs = append(errs, err)
+		errs = append(errs, dto.InternalServerError{Message: "Can't compiling email regex pattern"})
 		return nil, errs
 	}
 	if !regex.MatchString(userCreate.Email) {
-		errs = append(errs, errors.New("invalid email address!"))
+		errs = append(errs, dto.BadRequestError{Message: "invalid email address!"})
 	}
 
 	// check the password
 	if !scripts.CheckPassword(userCreate.Password) {
-		errs = append(errs, errors.New("invalid password!"))
+		errs = append(errs, dto.BadRequestError{Message: "invalid password!"})
 	}
 	if len(errs) > 0 {
 		return nil, errs
@@ -75,21 +74,24 @@ func (userService *userService) CreateUser(ctx *gin.Context, userCreate *dto.Use
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userCreate.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("We can't create a hash password: %s", err.Error())
-		errs = append(errs, errors.New("Internal server error in creating hash password"))
+		errs = append(errs, dto.InternalServerError{Message: "Internal server error in creating hash password"})
 		return nil, errs
 	}
 	userCreate.Password = string(hashedPassword)
 	user, err := userService.userRepository.CreateUser(ctx, userCreate)
-	return user, append(errs, err)
+	if err != nil {
+		return nil, append(errs, err)
+	}
+	return user, nil
 }
 
 // GetUsers returns a list of users from the database based on the specified page and limits.
 func (userService *userService) GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error) {
 	if page < 0 {
-		return nil, errors.New("Page shouldn't be negative!")
+		return nil, dto.BadRequestError{Message: "Page shouldn't be negative!"}
 	}
 	if limits <= 0 {
-		return nil, errors.New("Limits should be bigger than zero!")
+		return nil, dto.BadRequestError{Message: "Limits should be bigger than zero!"}
 	}
 	return userService.userRepository.GetUsers(ctx, page, limits)
 }
@@ -97,24 +99,13 @@ func (userService *userService) GetUsers(ctx *gin.Context, page, limits uint) ([
 // GetUserById returns a user given an id, and an error if the id is not valid.
 func (userService *userService) GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error) {
 	if userID <= 0 {
-		return nil, errors.New("Invalid user id")
+		return nil, dto.BadRequestError{Message: "Invalid user id"}
 	}
 	return userService.userRepository.GetUserByID(ctx, userID)
 }
 
 // UpdateUser updates an existing user if the provided user is valid, and returns an error otherwise.
 func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto) (*entities.UserEntity, []error) {
-	claim, err := scripts.CurrentTokenClaim(ctx)
-	if err != nil {
-		log.Printf("Can't get sender ID from the request's token: %s", err.Error())
-		return nil, []error{errors.New("Can't get sender ID from the request's token")}
-	}
-	if claim.UserID != userID {
-		return nil, []error{errors.New("Permission denied")}
-	}
-	if userUpdate.Age < 0 {
-		return nil, []error{errors.New("User age cannot be negative")}
-	}
 	var errs []error
 	user, err := userService.GetUserByID(ctx, userID)
 	if err != nil {
@@ -127,18 +118,22 @@ func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, us
 		regex, err := regexp.Compile(emailPattern)
 		if err != nil {
 			log.Printf("An error while compiling email regex pattern: %s", err.Error())
-			errs = append(errs, err)
+			errs = append(errs, dto.InternalServerError{Message: "Can't compiling email regex pattern"})
 			return nil, errs
 		}
 		if !regex.MatchString(userUpdate.Email) {
-			errs = append(errs, errors.New("invalid email address!"))
+			errs = append(errs, dto.BadRequestError{Message: "invalid email address!"})
 		}
+	}
+
+	if userUpdate.Age < 0 {
+		errs = append(errs, dto.BadRequestError{Message: "User age cannot be negative"})
 	}
 
 	if userUpdate.Password != "" {
 		// check the password
 		if !scripts.CheckPassword(userUpdate.Password) {
-			errs = append(errs, errors.New("invalid password!"))
+			errs = append(errs, dto.BadRequestError{Message: "invalid password!"})
 		}
 		if len(errs) > 0 {
 			return nil, errs
@@ -146,7 +141,7 @@ func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, us
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userUpdate.Password), bcrypt.DefaultCost)
 		if err != nil {
 			log.Printf("We can't create a hash password: %s", err.Error())
-			errs = append(errs, errors.New("Internal server error in creating hash password"))
+			errs = append(errs, dto.InternalServerError{Message: "Internal server error in creating hash password"})
 			return nil, errs
 		}
 		userUpdate.Password = string(hashedPassword)
@@ -156,21 +151,16 @@ func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, us
 		return nil, errs
 	}
 	user, err = userService.userRepository.UpdateUserByID(ctx, userID, userUpdate, user)
-	return user, append(errs, err)
+	if err != nil {
+		return nil, append(errs, err)
+	}
+	return user, nil
 }
 
 // DeleteUser deletes an existing user given an id, and returns an error if the id is not valid.
 func (userService *userService) DeleteUserByID(ctx *gin.Context, userID uint) error {
 	if userID <= 0 {
-		return errors.New("Invalid user id")
-	}
-	claim, err := scripts.CurrentTokenClaim(ctx)
-	if err != nil {
-		log.Printf("Can't get sender ID from the request's token: %s", err.Error())
-		return errors.New("Can't get sender ID from the request's token")
-	}
-	if claim.UserID != userID {
-		return errors.New("Permission denied")
+		return dto.BadRequestError{Message: "Invalid user id"}
 	}
 	return userService.userRepository.DeleteUserByID(ctx, userID)
 }
@@ -183,7 +173,7 @@ func (userService *userService) Login(ctx *gin.Context, userLogin *dto.UserLogin
 		return "", err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(userLogin.Password)); err != nil {
-		return "", errors.New("Invalid password!")
+		return "", dto.BadRequestError{Message: "Invalid password!"}
 	}
 	// Generate the token
 	tk := &dto.Claims{UserID: user.ID}
@@ -192,7 +182,7 @@ func (userService *userService) Login(ctx *gin.Context, userLogin *dto.UserLogin
 	tokenString, err := token.SignedString([]byte(config.Confs.Service.Token.Password))
 	if err != nil {
 		log.Printf("An Error while Generating a user's token string: %s", err.Error())
-		return "", err
+		return "", dto.InternalServerError{Message: "An Error while Generating a user's token string"}
 	}
 	return tokenString, nil
 }

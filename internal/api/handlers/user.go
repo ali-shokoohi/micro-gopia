@@ -43,11 +43,23 @@ func (uh *userHandler) CreateUser(c *gin.Context) {
 	}
 	userEntity, errs := uh.userService.CreateUser(c, userCreateDto)
 	if errs != nil && len(errs) > 0 {
-		strs := scripts.ErrorsSliceToStringSlice(errs)
-		if strs != nil {
+		switch errs[0].(type) {
+		case dto.InternalServerError:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"errors": errs,
+			})
+			return
+		case dto.BadRequestError:
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"status": "bad",
-				"errors": strs,
+				"errors": errs,
+			})
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"errors": errs,
 			})
 			return
 		}
@@ -92,11 +104,27 @@ func (uh *userHandler) GetUsers(c *gin.Context) {
 	}
 	userEntities, err := uh.userService.GetUsers(c, uint(page), uint(limits))
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"status": "bad",
-			"error":  err.Error(),
-		})
-		return
+		switch err.(type) {
+		case dto.BadRequestError:
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		case dto.InternalServerError:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		}
+
 	}
 	userViewDtos, err := scripts.UserEntitiesToUserViewDtos(userEntities)
 	if err != nil {
@@ -140,11 +168,26 @@ func (uh *userHandler) GetUserByID(c *gin.Context) {
 	}
 	userEntity, err := uh.userService.GetUserByID(c, uint(id))
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"status": "bad",
-			"error":  err.Error(),
-		})
-		return
+		switch err.(type) {
+		case dto.BadRequestError:
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		case dto.InternalServerError:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		}
 	}
 	userViewDto, err := scripts.UserEntityToUserViewDto(userEntity)
 	if err != nil {
@@ -178,6 +221,22 @@ func (uh *userHandler) UpdateUserByID(c *gin.Context) {
 		})
 		return
 	}
+	claim, err := scripts.CurrentTokenClaim(c)
+	if err != nil {
+		log.Printf("Can't get sender ID from the request's token: %s", err.Error())
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"status": "bad",
+			"error":  "Can't get sender ID from the request's token",
+		})
+		return
+	}
+	if claim.UserID != uint(id) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"status": "bad",
+			"error":  "Permission denied",
+		})
+		return
+	}
 	var userUpdateDto *dto.UserUpdateDto
 	if err := c.BindJSON(&userUpdateDto); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -188,11 +247,23 @@ func (uh *userHandler) UpdateUserByID(c *gin.Context) {
 	}
 	userEntity, errs := uh.userService.UpdateUserByID(c, uint(id), userUpdateDto)
 	if errs != nil && len(errs) > 0 {
-		strs := scripts.ErrorsSliceToStringSlice(errs)
-		if strs != nil {
+		switch errs[0].(type) {
+		case dto.InternalServerError:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"errors": errs,
+			})
+			return
+		case dto.BadRequestError:
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"status": "bad",
-				"errors": strs,
+				"errors": errs,
+			})
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"errors": errs,
 			})
 			return
 		}
@@ -229,13 +300,44 @@ func (uh *userHandler) DeleteUserByID(c *gin.Context) {
 		})
 		return
 	}
-	err = uh.userService.DeleteUserByID(c, uint(id))
+	claim, err := scripts.CurrentTokenClaim(c)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+		log.Printf("Can't get sender ID from the request's token: %s", err.Error())
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"status": "bad",
-			"error":  err.Error(),
+			"error":  "Can't get sender ID from the request's token",
 		})
 		return
+	}
+	if claim.UserID != uint(id) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"status": "bad",
+			"error":  "Permission denied",
+		})
+		return
+	}
+	err = uh.userService.DeleteUserByID(c, uint(id))
+	if err != nil {
+		switch err.(type) {
+		case dto.BadRequestError:
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		case dto.InternalServerError:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "ok",
@@ -254,11 +356,26 @@ func (uh *userHandler) Login(c *gin.Context) {
 	}
 	token, err := uh.userService.Login(c, &userLoginDto)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"status": "bad",
-			"error":  "Can't verify your login!",
-		})
-		return
+		switch err.(type) {
+		case dto.BadRequestError:
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		case dto.InternalServerError:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"status": "bad",
+				"error":  err.Error(),
+			})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
