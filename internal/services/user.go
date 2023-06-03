@@ -16,10 +16,10 @@ import (
 )
 
 type UserService interface {
-	CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, []error)
+	CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (entities.UserEntity, []error)
 	GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error)
-	GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error)
-	UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto) (*entities.UserEntity, []error)
+	GetUserByID(ctx *gin.Context, userID uint) (entities.UserEntity, error)
+	UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto) (entities.UserEntity, []error)
 	DeleteUserByID(ctx *gin.Context, userID uint) error
 	Login(ctx *gin.Context, userLogin *dto.UserLoginDto) (string, error)
 }
@@ -37,10 +37,11 @@ func NewUserService(userRepository repositories.UserRepository) UserService {
 }
 
 // CreateUser creates a new user if the provided user is valid, and returns an error otherwise.
-func (userService *userService) CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, []error) {
+func (userService *userService) CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (entities.UserEntity, []error) {
 	var errs []error
+	var user entities.UserEntity
 	if userCreate == nil {
-		return nil, append(errs, dto.BadRequestError{Message: "User cannot be null"})
+		return user, append(errs, dto.BadRequestError{Message: "User cannot be null"})
 	}
 	if userCreate.Name == "" {
 		errs = append(errs, dto.BadRequestError{Message: "User must have a name"})
@@ -58,7 +59,7 @@ func (userService *userService) CreateUser(ctx *gin.Context, userCreate *dto.Use
 	if err != nil {
 		log.Printf("An error while compiling email regex pattern: %s", err.Error())
 		errs = append(errs, dto.InternalServerError{Message: "Can't compiling email regex pattern"})
-		return nil, errs
+		return user, errs
 	}
 	if !regex.MatchString(userCreate.Email) {
 		errs = append(errs, dto.BadRequestError{Message: "invalid email address!"})
@@ -69,47 +70,55 @@ func (userService *userService) CreateUser(ctx *gin.Context, userCreate *dto.Use
 		errs = append(errs, dto.BadRequestError{Message: "invalid password!"})
 	}
 	if len(errs) > 0 {
-		return nil, errs
+		return user, errs
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userCreate.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("We can't create a hash password: %s", err.Error())
 		errs = append(errs, dto.InternalServerError{Message: "Internal server error in creating hash password"})
-		return nil, errs
+		return user, errs
 	}
 	userCreate.Password = string(hashedPassword)
-	user, err := userService.userRepository.CreateUser(ctx, userCreate)
+	err = userService.userRepository.CreateUser(ctx, userCreate, &user)
 	if err != nil {
-		return nil, append(errs, err)
+		return user, append(errs, err)
 	}
 	return user, nil
 }
 
 // GetUsers returns a list of users from the database based on the specified page and limits.
 func (userService *userService) GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error) {
+	var users []*entities.UserEntity
 	if page < 0 {
 		return nil, dto.BadRequestError{Message: "Page shouldn't be negative!"}
 	}
 	if limits <= 0 {
 		return nil, dto.BadRequestError{Message: "Limits should be bigger than zero!"}
 	}
-	return userService.userRepository.GetUsers(ctx, page, limits)
+	if err := userService.userRepository.GetUsers(ctx, page, limits, &users); err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 // GetUserById returns a user given an id, and an error if the id is not valid.
-func (userService *userService) GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error) {
+func (userService *userService) GetUserByID(ctx *gin.Context, userID uint) (entities.UserEntity, error) {
+	var user entities.UserEntity
 	if userID <= 0 {
-		return nil, dto.BadRequestError{Message: "Invalid user id"}
+		return user, dto.BadRequestError{Message: "Invalid user id"}
 	}
-	return userService.userRepository.GetUserByID(ctx, userID)
+	if err := userService.userRepository.GetUserByID(ctx, userID, &user); err != nil {
+		return user, err
+	}
+	return user, nil
 }
 
 // UpdateUser updates an existing user if the provided user is valid, and returns an error otherwise.
-func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto) (*entities.UserEntity, []error) {
+func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto) (entities.UserEntity, []error) {
 	var errs []error
 	user, err := userService.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, append(errs, err)
+		return user, append(errs, err)
 	}
 
 	if userUpdate.Email != "" { // Define a regular expression pattern for matching email addresses
@@ -119,7 +128,7 @@ func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, us
 		if err != nil {
 			log.Printf("An error while compiling email regex pattern: %s", err.Error())
 			errs = append(errs, dto.InternalServerError{Message: "Can't compiling email regex pattern"})
-			return nil, errs
+			return user, errs
 		}
 		if !regex.MatchString(userUpdate.Email) {
 			errs = append(errs, dto.BadRequestError{Message: "invalid email address!"})
@@ -136,23 +145,22 @@ func (userService *userService) UpdateUserByID(ctx *gin.Context, userID uint, us
 			errs = append(errs, dto.BadRequestError{Message: "invalid password!"})
 		}
 		if len(errs) > 0 {
-			return nil, errs
+			return user, errs
 		}
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userUpdate.Password), bcrypt.DefaultCost)
 		if err != nil {
 			log.Printf("We can't create a hash password: %s", err.Error())
 			errs = append(errs, dto.InternalServerError{Message: "Internal server error in creating hash password"})
-			return nil, errs
+			return user, errs
 		}
 		userUpdate.Password = string(hashedPassword)
 	}
 
 	if len(errs) > 0 {
-		return nil, errs
+		return user, errs
 	}
-	user, err = userService.userRepository.UpdateUserByID(ctx, userID, userUpdate, user)
-	if err != nil {
-		return nil, append(errs, err)
+	if err = userService.userRepository.UpdateUserByID(ctx, userID, userUpdate, &user); err != nil {
+		return user, append(errs, err)
 	}
 	return user, nil
 }
@@ -167,7 +175,8 @@ func (userService *userService) DeleteUserByID(ctx *gin.Context, userID uint) er
 
 // Login verifies logins and return a token string
 func (userService *userService) Login(ctx *gin.Context, userLogin *dto.UserLoginDto) (string, error) {
-	user, err := userService.userRepository.GetUserByEmail(ctx, userLogin.Email)
+	var user entities.UserEntity
+	err := userService.userRepository.GetUserByEmail(ctx, userLogin.Email, &user)
 	if err != nil {
 		log.Printf("An Error while getting a user with email: %s", err.Error())
 		return "", err

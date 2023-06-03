@@ -64,7 +64,7 @@ func (uh *userHandler) CreateUser(c *gin.Context) {
 			return
 		}
 	}
-	userViewDto, err := scripts.UserEntityToUserViewDto(userEntity)
+	userViewDto, err := scripts.UserEntityToUserViewDto(&userEntity)
 	if err != nil {
 		log.Printf("We could't transform user entity to user view, Error: %s", err.Error())
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
@@ -189,7 +189,7 @@ func (uh *userHandler) GetUserByID(c *gin.Context) {
 			return
 		}
 	}
-	userViewDto, err := scripts.UserEntityToUserViewDto(userEntity)
+	userViewDto, err := scripts.UserEntityToUserViewDto(&userEntity)
 	if err != nil {
 		log.Printf("We could't transform user entity to user view, Error: %s", err.Error())
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
@@ -268,7 +268,7 @@ func (uh *userHandler) UpdateUserByID(c *gin.Context) {
 			return
 		}
 	}
-	userViewDto, err := scripts.UserEntityToUserViewDto(userEntity)
+	userViewDto, err := scripts.UserEntityToUserViewDto(&userEntity)
 	if err != nil {
 		log.Printf("We could't transform user entity to user view, Error: %s", err.Error())
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{

@@ -14,11 +14,11 @@ import (
 
 // UserRepository defines five methods for creating, reading, updating, and deleting user data from the database
 type UserRepository interface {
-	CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, error)
-	GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error)
-	GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error)
-	GetUserByEmail(ctx *gin.Context, email string) (*entities.UserEntity, error)
-	UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto, userEntity *entities.UserEntity) (*entities.UserEntity, error)
+	CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto, user *entities.UserEntity) error
+	GetUsers(ctx *gin.Context, page, limits uint, users *[]*entities.UserEntity) error
+	GetUserByID(ctx *gin.Context, userID uint, user *entities.UserEntity) error
+	GetUserByEmail(ctx *gin.Context, email string, user *entities.UserEntity) error
+	UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto, userEntity *entities.UserEntity) error
 	DeleteUserByID(ctx *gin.Context, userID uint) error
 }
 
@@ -35,76 +35,69 @@ func NewUserRepository(db *datastore.Database) UserRepository {
 
 // CreateUser validates user data such as email and password using regular expressions, generates a hashed password,
 // And then creates and inserts a new user into the database using gorm.
-func (r *userRepository) CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto) (*entities.UserEntity, error) {
-	user := &entities.UserEntity{
-		Name:     userCreate.Name,
-		Age:      userCreate.Age,
-		Email:    userCreate.Email,
-		Password: userCreate.Password,
-	}
+func (r *userRepository) CreateUser(ctx *gin.Context, userCreate *dto.UserCreateDto, user *entities.UserEntity) error {
+	user.Name = userCreate.Name
+	user.Age = userCreate.Age
+	user.Email = userCreate.Email
+	user.Password = userCreate.Password
 
 	// Insert the user into the database
 	if err := r.gormDB.Create(user).Error; err != nil {
 		log.Printf("We can't insert new user into database: %s", err.Error())
 
-		return nil, dto.InternalServerError{Message: "Internal error at inserting new user into database"}
+		return dto.InternalServerError{Message: "Internal error at inserting new user into database"}
 	}
 
-	return user, nil
+	return nil
 }
 
 // GetUsers returns a list of users from the database based on the specified page and limits.
-func (r *userRepository) GetUsers(ctx *gin.Context, page, limits uint) ([]*entities.UserEntity, error) {
-	users := []*entities.UserEntity{}
-
+func (r *userRepository) GetUsers(ctx *gin.Context, page, limits uint, users *[]*entities.UserEntity) error {
 	// Query the users from the database
 	offset := page * limits
 	if err := r.gormDB.Limit(int(limits)).Offset(int(offset)).Find(&users).Error; err != nil {
 
 		log.Printf("We can't get Users Error: %s", err.Error())
-		return nil, dto.InternalServerError{Message: "Internal server error at getting users"}
+		return dto.InternalServerError{Message: "Internal server error at getting users"}
 	}
 
-	return users, nil
+	return nil
 }
 
 // GetUserByID returns a user from the database based on the specified userID.
-func (r *userRepository) GetUserByID(ctx *gin.Context, userID uint) (*entities.UserEntity, error) {
-	user := &entities.UserEntity{}
+func (r *userRepository) GetUserByID(ctx *gin.Context, userID uint, user *entities.UserEntity) error {
 
 	// Query the user by ID from the database
 	if err := r.gormDB.First(user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, dto.BadRequestError{Message: fmt.Sprintf("User not found with ID: %d", userID)}
+			return dto.BadRequestError{Message: fmt.Sprintf("User not found with ID: %d", userID)}
 		}
 		log.Printf("We can't get User with ID: %d, Error: %s", userID, err.Error())
-		return nil, dto.InternalServerError{Message: "Internal server error at getting user with ID"}
+		return dto.InternalServerError{Message: "Internal server error at getting user with ID"}
 	}
 
-	return user, nil
+	return nil
 }
 
 // GetUserByEmail returns a user from the database based on the specified email.
-func (r *userRepository) GetUserByEmail(ctx *gin.Context, email string) (*entities.UserEntity, error) {
-	user := &entities.UserEntity{
-		Email: email,
-	}
+func (r *userRepository) GetUserByEmail(ctx *gin.Context, email string, user *entities.UserEntity) error {
+	user.Email = email
 
 	// Query the user by Email from the database
 	if err := r.gormDB.Where(user).Find(user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, dto.BadRequestError{Message: fmt.Sprintf("User not found with Email: %s", email)}
+			return dto.BadRequestError{Message: fmt.Sprintf("User not found with Email: %s", email)}
 		}
 		log.Printf("We can't get User with Email: %s, Error: %s", email, err.Error())
-		return nil, dto.InternalServerError{Message: "Internal server error at getting user with Email"}
+		return dto.InternalServerError{Message: "Internal server error at getting user with Email"}
 	}
 
-	return user, nil
+	return nil
 }
 
 // UpdateUserByID updates a user in the database based on the specified userID and userUpdate data,
 // Which may include a new email, password, age or name.
-func (r *userRepository) UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto, userEntity *entities.UserEntity) (*entities.UserEntity, error) {
+func (r *userRepository) UpdateUserByID(ctx *gin.Context, userID uint, userUpdate *dto.UserUpdateDto, userEntity *entities.UserEntity) error {
 
 	// Update the user's properties
 	if userUpdate.Name != "" {
@@ -123,10 +116,10 @@ func (r *userRepository) UpdateUserByID(ctx *gin.Context, userID uint, userUpdat
 	// Save the updated user to the database
 	if err := r.gormDB.Save(userEntity).Error; err != nil {
 		log.Printf("Internal error at saving updated user into database. UserID: %d, Error: %s", userID, err.Error())
-		return nil, dto.InternalServerError{Message: "Internal error at saving updated user into database"}
+		return dto.InternalServerError{Message: "Internal error at saving updated user into database"}
 	}
 
-	return userEntity, nil
+	return nil
 }
 
 // DeleteUserByID deletes a user from the database based on the specified userID.
@@ -134,7 +127,7 @@ func (r *userRepository) DeleteUserByID(ctx *gin.Context, userID uint) error {
 	user := &entities.UserEntity{}
 
 	// Query the user by ID from the database
-	if _, err := r.GetUserByID(ctx, userID); err != nil {
+	if err := r.GetUserByID(ctx, userID, user); err != nil {
 		return err
 	}
 

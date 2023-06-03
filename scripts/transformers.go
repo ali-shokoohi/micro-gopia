@@ -8,15 +8,15 @@ import (
 )
 
 // UserEntityToUserViewDto transforms an UserEntity to an UserViewDto
-func UserEntityToUserViewDto(userEntity *entities.UserEntity) (*dto.UserViewDto, error) {
+func UserEntityToUserViewDto(userEntity *entities.UserEntity) (dto.UserViewDto, error) {
+	var userViewDto dto.UserViewDto
 	user, err := json.Marshal(userEntity)
 	if err != nil {
-		return nil, err
+		return userViewDto, err
 	}
-	var userViewDto *dto.UserViewDto
 	err = json.Unmarshal(user, &userViewDto)
 	if err != nil {
-		return nil, err
+		return userViewDto, err
 	}
 	return userViewDto, nil
 }
@@ -32,7 +32,7 @@ func UserEntitiesToUserViewDtos(userEntities []*entities.UserEntity) ([]*dto.Use
 		if err != nil {
 			return nil, err
 		}
-		userViewDtos = append(userViewDtos, userViewDto)
+		userViewDtos = append(userViewDtos, &userViewDto)
 	}
 	return userViewDtos, nil
 }
