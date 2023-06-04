@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ali-shokoohi/micro-gopia/config"
+	"github.com/ali-shokoohi/micro-gopia/docs"
 	"github.com/ali-shokoohi/micro-gopia/internal/api/routes"
 	"github.com/ali-shokoohi/micro-gopia/pkg/migrations"
 	"github.com/fsnotify/fsnotify"
@@ -13,6 +14,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+// @title           Gopia
+// @version         1.0
+// @description     A RestAPI with Go
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 func main() {
 	// Reading config file
 	if err := config.Confs.Load(); err != nil {
@@ -43,12 +50,17 @@ func main() {
 		return
 	}
 
+	// programmatically set swagger info
+	baseHost := fmt.Sprintf("%s:%s", config.Confs.Service.HTTP.Host, config.Confs.Service.HTTP.Port)
+	docs.SwaggerInfo.Host = baseHost
+	docs.SwaggerInfo.BasePath = "/api/v1"
+
 	// Import routes
 	r := gin.Default()
 	routes.Routes(r)
 
 	// Start listening
-	if err := r.Run(fmt.Sprintf("%s:%s", config.Confs.Service.HTTP.Host, config.Confs.Service.HTTP.Port)); err != nil {
+	if err := r.Run(baseHost); err != nil {
 		fmt.Printf("We have an error in start listening: %s", err.Error())
 		return
 	}

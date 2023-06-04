@@ -25,7 +25,8 @@ type Service struct {
 	HTTP    struct {
 		Host           string `yaml:"http.host"`
 		Port           string `yaml:"http.port"`
-		RequestTimeout string `yaml:"http.requestTimeout"`
+		RequestTimeout uint   `yaml:"http.requestTimeout"`
+		AllowOrigin    string `yaml:"http.allowOrigin"`
 	}
 	Token struct {
 		Password   string `yaml:"token.password"`

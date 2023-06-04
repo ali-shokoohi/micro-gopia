@@ -1,0 +1,312 @@
+definitions:
+  dto.HttpAccessTokenSuccess:
+    properties:
+      status:
+        type: string
+      token:
+        type: string
+    type: object
+  dto.HttpFailure:
+    properties:
+      error: {}
+      status:
+        type: string
+    type: object
+  dto.HttpFailures:
+    properties:
+      errors:
+        items: {}
+        type: array
+      status:
+        type: string
+    type: object
+  dto.HttpSuccess:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  dto.HttpUserSuccess:
+    properties:
+      status:
+        type: string
+      user:
+        $ref: '#/definitions/dto.UserViewDto'
+    type: object
+  dto.HttpUsersSuccess:
+    properties:
+      status:
+        type: string
+      user:
+        items:
+          $ref: '#/definitions/dto.UserViewDto'
+        type: array
+    type: object
+  dto.UserCreateDto:
+    properties:
+      age:
+        type: integer
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    type: object
+  dto.UserLoginDto:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  dto.UserUpdateDto:
+    properties:
+      age:
+        type: integer
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    type: object
+  dto.UserViewDto:
+    properties:
+      age:
+        type: integer
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: A RestAPI with Go
+  title: Gopia
+  version: "1.0"
+paths:
+  /:
+    get:
+      consumes:
+      - application/json
+      description: home page
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HttpSuccess'
+      summary: Show the server's status
+      tags:
+      - root
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of users with pagination
+      parameters:
+      - default: 0
+        description: Page number of users
+        in: path
+        name: page
+        type: integer
+      - default: 10
+        description: limit of users in each page
+        in: path
+        name: limits
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HttpUsersSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create an user
+      parameters:
+      - description: User creation body
+        in: body
+        name: '{object}'
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserCreateDto'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.HttpUserSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.HttpFailures'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+      summary: Create an user
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an user By ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HttpSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete an user
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: Get an user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HttpUserSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+      summary: Show an user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update an user by ID and new data
+      parameters:
+      - description: User update body
+        in: body
+        name: '{object}'
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserUpdateDto'
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HttpUserSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.HttpFailures'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+      security:
+      - ApiKeyAuth: []
+      summary: Update an user
+      tags:
+      - users
+  /users/login:
+    post:
+      consumes:
+      - application/json
+      description: Login with username and password
+      parameters:
+      - description: User login body
+        in: body
+        name: '{object}'
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserLoginDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HttpAccessTokenSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.HttpFailures'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.HttpFailure'
+      summary: User login
+      tags:
+      - users
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -7,9 +7,10 @@
 
 service:
   http:
-    host: "0.0.0.0"
+    host: "127.0.0.1"
     port: "8080"
     requestTimeout: 32
+    allowOrigin: "127.0.0.1"
   token:
     password: "2791d21ddfc53f1bccbe2cf6ec4efb2042cd6cb2ad737c4f724d66fc2cd01fd0"
     expiration: 3600
