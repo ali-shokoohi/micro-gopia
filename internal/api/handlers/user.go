@@ -231,7 +231,7 @@ func (uh *userHandler) GetUserByID(c *gin.Context) {
 	})
 }
 
-// CreateUser godoc
+// UpdateUserByID godoc
 // @Summary      Update an user
 // @Description  Update an user by ID and new data
 // @Tags         users
@@ -324,7 +324,7 @@ func (uh *userHandler) UpdateUserByID(c *gin.Context) {
 	})
 }
 
-// CreateUser godoc
+// DeleteUserByID godoc
 // @Summary      Delete an user
 // @Description  Delete an user By ID
 // @Tags         users
@@ -399,7 +399,7 @@ func (uh *userHandler) DeleteUserByID(c *gin.Context) {
 	})
 }
 
-// CreateUser godoc
+// Login godoc
 // @Summary      User login
 // @Description  Login with username and password
 // @Tags         users
