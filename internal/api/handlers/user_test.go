@@ -393,3 +393,65 @@ func TestDeleteUserByID(t *testing.T) {
 	// Check the response status code
 	assert.Equal(t, http.StatusOK, w.Code, "Response's status code should be 200 (ok)")
 }
+
+func TestLogin(t *testing.T) {
+	// Create a new instance of the user handler
+	userHandler, cleanup := setupUserHandler()
+	defer cleanup()
+
+	// Create a test HTTP request with a JSON payload
+	userToInsert := dto.UserCreateDto{
+		Name:     "John Doe",
+		Age:      25,
+		Email:    "john@example.com",
+		Password: "*Password123#",
+	}
+
+	payload, err := json.Marshal(userToInsert)
+	assert.NoError(t, err, "There should be no error here on json.Marshal(userToInsert)")
+	req, err := http.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewBuffer(payload))
+	assert.NoError(t, err, "There should be no error here on making creation request")
+	// Create a test HTTP response recorder
+	w := httptest.NewRecorder()
+
+	// Create a Gin context from the request and response recorder
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+
+	// Call the CreateUser handler method
+	userHandler.CreateUser(c)
+
+	// Check the response status code
+	assert.Equal(t, http.StatusCreated, w.Code, "Response's status code should be 201 (Created)")
+	var createdUserResponse dto.HttpUserSuccess
+	err = json.Unmarshal(w.Body.Bytes(), &createdUserResponse)
+	assert.NoError(t, err, "There should be no error here on json.Unmarshal the response")
+
+	// Create a test HTTP request for login
+	userToLogin := dto.UserLoginDto{
+		Email:    userToInsert.Email,
+		Password: userToInsert.Password,
+	}
+	payload, err = json.Marshal(userToLogin)
+	assert.NoError(t, err, "There should be no error here on json.Marshal(userToLogin)")
+	req, err = http.NewRequest(http.MethodPost, "/api/v1/users/login", bytes.NewBuffer(payload))
+	assert.NoError(t, err, "There should be no error here on making login user request")
+	// Create a test HTTP response recorder
+	w = httptest.NewRecorder()
+
+	// Create a Gin context from the request and response recorder
+	c, _ = gin.CreateTestContext(w)
+	c.Request = req
+
+	// Call the UpdateUserByID handler method
+	userHandler.Login(c)
+
+	// Check the response status code
+	assert.Equal(t, http.StatusOK, w.Code, "Response's status code should be 200 (ok)")
+
+	// Validation the response body
+	var loginResponseBody dto.HttpAccessTokenSuccess
+	err = json.Unmarshal(w.Body.Bytes(), &loginResponseBody)
+	assert.NoError(t, err, "There should be no error here on json.Unmarshal the response")
+	assert.NotEmpty(t, loginResponseBody.Token, "Access token shouldn't be empty")
+}
