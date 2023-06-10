@@ -67,15 +67,17 @@ func (g *Config) SetDebug(debug bool) {
 }
 
 // Load returns configs
-func (g *Config) Load() error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("Can't get working directory with error: %e", err)
-	}
-	path := dir + "/config/config-debug.yaml"
-	if mode := os.Getenv("GIN_MODE"); mode == "release" {
-		path = dir + "/config/config.yaml"
-		g.Debug = false
+func (g *Config) Load(path string) error {
+	if path == "" {
+		dir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("Can't get working directory with error: %e", err)
+		}
+		path = dir + "/config/config-debug.yaml"
+		if mode := os.Getenv("GIN_MODE"); mode == "release" {
+			path = dir + "/config/config.yaml"
+			g.Debug = false
+		}
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		return g.file(path)

@@ -7,11 +7,14 @@ import (
 	"github.com/ali-shokoohi/micro-gopia/internal/domain/repositories"
 	"github.com/ali-shokoohi/micro-gopia/internal/services"
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/postgres"
 )
 
 func UserRoutes(r *gin.RouterGroup) *gin.RouterGroup {
+
 	auth := auth.NewAuth()
-	userRepository := repositories.NewUserRepository(datastore.DB)
+	db := datastore.NewDatabase(postgres.Open(datastore.GeneratePsqlInfo()))
+	userRepository := repositories.NewUserRepository(db)
 	userService := services.NewUserService(userRepository)
 	userHandler := handlers.NewUserHandler(userService)
 	r.POST("/", userHandler.CreateUser)

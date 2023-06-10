@@ -22,7 +22,7 @@ import (
 // @name Authorization
 func main() {
 	// Reading config file
-	if err := config.Confs.Load(); err != nil {
+	if err := config.Confs.Load(""); err != nil {
 		fmt.Printf("We have an error in loading config: %s", err.Error())
 		return
 	}
@@ -30,7 +30,7 @@ func main() {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		log.Println("Config file changed:", e.Name)
-		if err := config.Confs.Load(); err != nil {
+		if err := config.Confs.Load(""); err != nil {
 			fmt.Printf("We have an error in loading config: %s", err.Error())
 			return
 		}

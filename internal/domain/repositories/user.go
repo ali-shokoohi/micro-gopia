@@ -30,7 +30,7 @@ type userRepository struct {
 
 // NewUserRepository returns a new instance of userRepository
 func NewUserRepository(db *datastore.Database) UserRepository {
-	return &userRepository{db: db, gormDB: db.GetDatabase()}
+	return &userRepository{db: db, gormDB: db.Gorm}
 }
 
 // CreateUser validates user data such as email and password using regular expressions, generates a hashed password,
