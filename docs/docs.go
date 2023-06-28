@@ -401,7 +401,7 @@ const docTemplate = `{
                 "status": {
                     "type": "string"
                 },
-                "user": {
+                "users": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/dto.UserViewDto"

@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: $GOPIA_POSTGRES_USER
+      POSTGRES_DB: $GOPIA_POSTGRES_DB
+      POSTGRES_PASSWORD: $GOPIA_POSTGRES_PASSWORD
+    volumes:
+      - ./db:/var/lib/postgresql/data
+  web:
+    build: .
+    restart: always
+    # command: sh -c "/micro-gopia migrate && /micro-gopia"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    volumes:
+      - micro-gopia-app:/app
+volumes:
+  db:
+    driver: local
+  micro-gopia-app:
+    external: true

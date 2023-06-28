@@ -51,3 +51,5 @@ temp/
 /pkg/
 /lib/
 
+# Ignore Docker volumes
+/db/
