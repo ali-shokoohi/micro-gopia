@@ -7,7 +7,7 @@ services:
       POSTGRES_DB: $GOPIA_POSTGRES_DB
       POSTGRES_PASSWORD: $GOPIA_POSTGRES_PASSWORD
     volumes:
-      - ./db:/var/lib/postgresql/data
+      - micro-gopia-db:/var/lib/postgresql/data
   web:
     build: .
     restart: always
@@ -19,7 +19,7 @@ services:
     volumes:
       - micro-gopia-app:/app
 volumes:
-  db:
-    driver: local
+  micro-gopia-db:
+    external: true
   micro-gopia-app:
     external: true
