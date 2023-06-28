@@ -38,7 +38,7 @@ definitions:
     properties:
       status:
         type: string
-      user:
+      users:
         items:
           $ref: '#/definitions/dto.UserViewDto'
         type: array

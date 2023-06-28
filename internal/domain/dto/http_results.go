@@ -12,7 +12,7 @@ type HttpUserSuccess struct {
 
 type HttpUsersSuccess struct {
 	Status string         `json:"status"`
-	Users  []*UserViewDto `json:"user"`
+	Users  []*UserViewDto `json:"users"`
 }
 
 type HttpFailure struct {
