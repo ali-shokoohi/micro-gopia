@@ -20,6 +20,4 @@ services:
       - micro-gopia-app:/app
 volumes:
   micro-gopia-db:
-    external: true
   micro-gopia-app:
-    external: true
