@@ -51,7 +51,9 @@ func main() {
 	}
 
 	// programmatically set swagger info
-	baseHost := fmt.Sprintf("%s:%s", config.Confs.Service.HTTP.Host, config.Confs.Service.HTTP.Port)
+	host := config.Confs.Service.HTTP.Host
+	port := config.Confs.Service.HTTP.Port
+	baseHost := fmt.Sprintf("%s:%s", host, port)
 	docs.SwaggerInfo.Host = baseHost
 	docs.SwaggerInfo.BasePath = "/api/v1"
 
@@ -60,7 +62,7 @@ func main() {
 	routes.Routes(r)
 
 	// Start listening
-	if err := r.Run(baseHost); err != nil {
+	if err := r.Run(":" + port); err != nil {
 		fmt.Printf("We have an error in start listening: %s", err.Error())
 		return
 	}
